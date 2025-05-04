@@ -1,49 +1,26 @@
 from flask import Flask, render_template_string
-import pyodbc
+import sqlite3
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
-# פרטי חיבור ל-SQL Server
-conn_str = (
-    "Driver={ODBC Driver 18 for SQL Server};"
-    "Server=10.10.10.101;"
-    "Database=data;"
-    "UID=sa;"
-    "PWD=qazwsx123!;"
-    "Encrypt=yes;"
-    "TrustServerCertificate=yes;"
-)
-
 @app.route("/")
 def show_orders():
     try:
-        conn = pyodbc.connect(conn_str)
+        conn = sqlite3.connect("orders.db")
         cursor = conn.cursor()
 
         week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
 
         query = """
-            SELECT TOP 10
-                project_kablan_tb.projectname,
-                project_dayarim_tb.familyname,
-                project_dayarim_tb.orderno,
-                sell_order_tb.tipul,
-                sell_order_tb.totalpaid,
-                sell_order_tb.orderdate
-            FROM
-                project_kablan_tb
-                INNER JOIN project_detail_tb ON project_kablan_tb.kodkablan = project_detail_tb.kablantb
-                INNER JOIN project_dayarim_tb ON project_detail_tb.kodproject = project_dayarim_tb.projecttb
-                INNER JOIN sell_order_tb ON project_dayarim_tb.dayarim = sell_order_tb.dayarimtb
-            WHERE
-                project_dayarim_tb.orderno IS NOT NULL AND
-                sell_order_tb.orderdate >= ?
-            ORDER BY
-                sell_order_tb.orderdate DESC;
+            SELECT projectname, familyname, orderno, tipul, totalpaid, orderdate
+            FROM orders
+            WHERE orderdate >= ?
+            ORDER BY orderdate DESC
+            LIMIT 10
         """
 
-        cursor.execute(query, week_ago)
+        cursor.execute(query, (week_ago,))
         rows = cursor.fetchall()
 
         html = """
@@ -59,12 +36,12 @@ def show_orders():
             </tr>
             {% for row in rows %}
             <tr>
-                <td>{{ row.projectname }}</td>
-                <td>{{ row.familyname }}</td>
-                <td>{{ row.orderno }}</td>
-                <td>{{ row.tipul }}</td>
-                <td>{{ row.totalpaid }}</td>
-                <td>{{ row.orderdate.strftime('%Y-%m-%d') }}</td>
+                <td>{{ row[0] }}</td>
+                <td>{{ row[1] }}</td>
+                <td>{{ row[2] }}</td>
+                <td>{{ row[3] }}</td>
+                <td>{{ row[4] }}</td>
+                <td>{{ row[5] }}</td>
             </tr>
             {% endfor %}
         </table>
