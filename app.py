@@ -1,27 +1,24 @@
 from flask import Flask, render_template_string
-import sqlite3
-from datetime import datetime, timedelta
+import psycopg2
 
 app = Flask(__name__)
+
+# פרטי התחברות למסד PostgreSQL בענן
+pg_conn_str = "host=dpg-d0blet2dbo4c73cs5nfg-a.frankfurt-postgres.render.com dbname=orders_2ia3 user=orders_user password=iyuviUrVororwVqpoKqR2lyVBM3UlWSq"
 
 @app.route("/")
 def show_orders():
     try:
-        conn = sqlite3.connect("orders.db")
+        conn = psycopg2.connect(pg_conn_str)
         cursor = conn.cursor()
-
-        week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-
-        query = """
+        cursor.execute("""
             SELECT projectname, familyname, orderno, tipul, totalpaid, orderdate
-            FROM orders
-            WHERE orderdate >= ?
+            FROM week_order
             ORDER BY orderdate DESC
-            LIMIT 10
-        """
-
-        cursor.execute(query, (week_ago,))
+            LIMIT 50;
+        """)
         rows = cursor.fetchall()
+        conn.close()
 
         html = """
         <h2 style="direction: rtl; font-family: Arial;">הזמנות מהשבוע האחרון</h2>
@@ -49,7 +46,7 @@ def show_orders():
         return render_template_string(html, rows=rows)
 
     except Exception as e:
-        return f"<h2>שגיאה:</h2><pre>{e}</pre>"
+        return f"<h2>❌ שגיאה:</h2><pre>{e}</pre>"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
